@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product Booklet</title>
+  <style>
+    @page {
+      size: A5;
+      margin: 5mm;
+    }
+
+    @media print {
+      body {
+        margin: 0;
+      }
+      .page {
+        page-break-after: always;
+      }
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    .page {
+      height: 100vh; /* full viewport height */
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      justify-content: stretch; /* spread 3 products evenly */
+      page-break-after: always;
+      margin: 0;
+      padding: 0;
+    }
+
+    .product {
+      display: flex;
+      flex-grow: 1;
+      /*flex-direction: row;*/
+      /*flex: 1 1 0;*/
+      min-height: 0; /* prevent overflow */
+      margin: 0;
+      border: 1px solid #ccc; /* optional border */
+      padding: 5px;
+      box-sizing: border-box;
+    }
+
+    .product-title {
+      font-weight: bold;
+      font-size: 1.5em;
+      margin-bottom: 10px;
+      white-space: normal;
+      word-wrap: break-word;
+    }
+
+    .product-image {
+      flex: 0 0 33.33%;
+      max-width: 33.33%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .product-image img,
+    .product-image object {
+      max-width: 100%;
+      max-height: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .product-details {
+      flex: 2;
+      font-size: 1.5em;
+      padding-left: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="booklet"></div>
+
+  <script>
+async function loadSheetData() {
+  const sheetId = prompt('Please enter your Google Sheet ID:\n\nHint: this is the long series of letters after `/d/` and before `/edit` in the URL.');
+  const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=0`;
+
+  const response = await fetch(sheetUrl);
+  const text = await response.text();
+
+  // Remove the Google wrapper
+  const json = JSON.parse(text.substring(47, text.length - 2));
+
+  const cols = json.table.cols.map(col => col.label.toLowerCase());
+  const rows = json.table.rows;
+
+  const entries = rows.map(row => {
+    const values = row.c.map(cell => cell ? cell.v : '');
+    return {
+      name: values[cols.indexOf('name')],
+      image: values[cols.indexOf('image')],
+      size: values[cols.indexOf('sticker size')]
+    };
+  });
+
+  renderBooklet(entries);
+}
+
+function renderBooklet(entries) {
+  const container = document.getElementById('booklet');
+  for (let i = 0; i < entries.length; i += 3) {
+    const page = document.createElement('div');
+    page.className = 'page';
+
+    for (let j = i; j < i + 3 && j < entries.length; j++) {
+      const item = entries[j];
+
+      const product = document.createElement('div');
+      product.className = 'product';
+
+      const image = document.createElement('div');
+      image.className = 'product-image';
+      image.innerHTML = item.image.trim().endsWith('.svg') ? 
+        `<object type="image/svg+xml" data="${item.image}" width="100%"></object>` : 
+        `<img src="${item.image}" alt="${item.name}" />`;
+
+      const details = document.createElement('div');
+      details.className = 'product-details';
+      details.innerHTML = `
+        <div class="product-title">${item.name}</div>
+        <div><strong>Sticker Size:</strong> ${item.size}</div>
+      `;
+
+      product.appendChild(image);
+      product.appendChild(details);
+      page.appendChild(product);
+    }
+
+    container.appendChild(page);
+  }
+}
+
+loadSheetData();
+  </script>
+</body>
+</html>
